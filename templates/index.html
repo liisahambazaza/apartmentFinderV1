@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>NYC Apartment Recommender</title>
+    <style>
+      body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; padding: 2rem; }
+      .card { border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem; }
+    </style>
+  </head>
+  <body>
+    <h1>NYC Apartment Recommender (Starter)</h1>
+    <div class="card">
+      <label>Top results: <input id="topN" type="number" value="5" min="1" max="20"/></label>
+      <button id="get">Get recommendations</button>
+    </div>
+    <div id="results"></div>
+
+    <script>
+      async function getRecs() {
+        const topN = document.getElementById('topN').value || 5;
+        const res = await fetch('/api/recommend', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ top_n: Number(topN) })
+        });
+        const data = await res.json();
+        const out = document.getElementById('results');
+        out.innerHTML = '';
+        (data.recommendations || []).forEach(r => {
+          const el = document.createElement('div');
+          el.className = 'card';
+          el.innerHTML = `<strong>${r.neighborhood}</strong><br/>Rent: $${r.rent} — Score: ${(+r.score).toFixed(3)}`;
+          out.appendChild(el);
+        });
+      }
+      document.getElementById('get').addEventListener('click', getRecs);
+    </script>
+  </body>
+</html>

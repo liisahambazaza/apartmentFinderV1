@@ -1,0 +1,7 @@
+neighborhood,rent,crime_rate,transit_score,school_score,walk_score,latitude,longitude
+Upper East Side,3200,0.2,0.9,0.8,0.95,40.7736,-73.9566
+Williamsburg,2800,0.25,0.95,0.7,0.9,40.7081,-73.9571
+Harlem,1800,0.5,0.7,0.6,0.75,40.8116,-73.9465
+Astoria,2200,0.35,0.8,0.65,0.85,40.7644,-73.9235
+Financial District,3500,0.15,0.98,0.9,0.92,40.7060,-74.0086
+Bushwick,2000,0.4,0.75,0.55,0.7,40.6957,-73.9213
