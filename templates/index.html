@@ -5,36 +5,118 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>NYC Apartment Recommender</title>
     <style>
-      body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; padding: 2rem; }
-      .card { border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem; }
+      body {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+        padding: 2rem;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      h1 { color: #333; }
+      .card {
+        border: 1px solid #ddd;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .input-group {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+      input[type="range"] {
+        flex: 1;
+        min-width: 200px;
+      }
+      button {
+        padding: 0.6rem 1.2rem;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      button:hover { background: #0056b3; }
+      .budget-display { font-weight: bold; color: #007bff; }
+      .result-item {
+        padding: 1rem;
+        background: #f9f9f9;
+        border-left: 4px solid #007bff;
+        margin-bottom: 0.8rem;
+        border-radius: 4px;
+      }
+      .result-item strong { display: block; font-size: 1.1rem; }
+      .result-item .details { color: #666; margin-top: 0.4rem; }
+      .results-count { color: #666; font-size: 0.95rem; }
     </style>
   </head>
   <body>
-    <h1>NYC Apartment Recommender (Starter)</h1>
+    <h1>NYC Apartment Recommender</h1>
     <div class="card">
-      <label>Top results: <input id="topN" type="number" value="5" min="1" max="20"/></label>
-      <button id="get">Get recommendations</button>
+      <label>Max Budget (per month):<br/>
+        <span class="budget-display">$<span id="budgetValue">3000</span></span>
+      </label>
+      <div class="input-group">
+        <input id="budgetSlider" type="range" min="500" max="6000" value="3000" step="100"/>
+        <button id="get">Get Recommendations</button>
+      </div>
+      <p class="results-count" id="resultCount"></p>
     </div>
     <div id="results"></div>
 
     <script>
+      const slider = document.getElementById('budgetSlider');
+      const budgetValue = document.getElementById('budgetValue');
+      const resultCount = document.getElementById('resultCount');
+
+      slider.addEventListener('input', (e) => {
+        budgetValue.textContent = e.target.value;
+      });
+
       async function getRecs() {
-        const topN = document.getElementById('topN').value || 5;
+        const maxRent = Number(document.getElementById('budgetSlider').value);
         const res = await fetch('/api/recommend', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ top_n: Number(topN) })
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ max_rent: maxRent, top_n: 10 })
         });
         const data = await res.json();
         const out = document.getElementById('results');
         out.innerHTML = '';
-        (data.recommendations || []).forEach(r => {
+        
+        const recs = data.recommendations || [];
+        resultCount.textContent = recs.length > 0
+          ? `Found ${recs.length} neighborhood${recs.length !== 1 ? 's' : ''} within budget`
+          : 'No neighborhoods found within budget';
+
+        if (recs.length === 0) {
           const el = document.createElement('div');
           el.className = 'card';
-          el.innerHTML = `<strong>${r.neighborhood}</strong><br/>Rent: $${r.rent} — Score: ${(+r.score).toFixed(3)}`;
+          el.innerHTML = '<p style="color: #999;">Try increasing your budget or adjusting filters.</p>';
+          out.appendChild(el);
+          return;
+        }
+
+        recs.forEach((r, idx) => {
+          const el = document.createElement('div');
+          el.className = 'result-item';
+          const rent = parseFloat(r.rent).toFixed(0);
+          el.innerHTML = `
+            <strong>#${idx + 1} — ${r.areaName}</strong>
+            <div class="details">
+              Borough: ${r.Borough} | Type: ${r.areaType}<br/>
+              Median Rent: <strong>$${rent}/month</strong>
+            </div>
+          `;
           out.appendChild(el);
         });
       }
+
       document.getElementById('get').addEventListener('click', getRecs);
+      // Auto-fetch on page load
+      getRecs();
     </script>
   </body>
 </html>
