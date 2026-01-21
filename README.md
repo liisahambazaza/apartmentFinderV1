@@ -3,7 +3,7 @@
 =======
 # NYC Apartment Recommender — Starter
 
-This is a minimal FastAPI scaffold that demonstrates using NYC area data to produce apartment recommendations.
+This is a minimal FastAPI scaffold that demonstrates using NYC area data to produce apartment recommendations based on preselected budget
 
 Quick start (macOS):
 
@@ -29,8 +29,4 @@ Files of interest:
 - File: data/sample_nyc.csv (small sample dataset)
 - File: templates/index.html (basic frontend)
 
-Next steps you can ask me to implement:
-- Add a persistent data loader and ingestion
-- Add user-adjustable weighting for factors
-- Add authentication and deployment configuration
 >>>>>>> 3958a45 (Initial commit)
