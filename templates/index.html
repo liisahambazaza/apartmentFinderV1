@@ -5,40 +5,115 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>NYC Apartment Recommender</title>
     <style>
-      body {
-        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
-        padding: 2rem;
-        max-width: 900px;
-        margin: 0 auto;
+      :root{
+        --bg1:#9090d8;
+        --bg2:#87b5ea;
+        --card:#ffffffcc;
+        --border:rgba(0,0,0,.08);
+        --text:#1f2937;
+        --muted:#6b7280;
+        --accent:#6d5efc;
+        --accent2:#22c1c3;
+        --shadow: 0 10px 30px rgba(17, 24, 39, .08);
+
       }
-      h1 { color: #333; }
+      *{
+        box-sizing:border-box; /* makes width/height include padding +border */
+      }
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+        padding: 2rem 1.25rem;
+        max-width: 980px;
+        margin: 0 auto;
+        color: var(--text);
+        background:
+           radial-gradient(900px 500px at 15% 15%, var(--bg2), transparent 60%),
+            /* 1st background layer: a big soft blue “blob” near top-left */
+
+          radial-gradient(900px 500px at 85% 0%, #fae4ef, transparent 55%),
+            /* 2nd layer: a pinkish soft blob near top-right */
+
+          linear-gradient(180deg, var(--bg1), #ffffff);
+            /* 3rd layer: vertical fade from bg1 to white (top → bottom) */
+
+      }
+      h1 { 
+        margin: 0 0 1rem;
+        letter-spacing: -0.02em;
+        font-size: clamp(1.6rem, 2vw + 1rem, 2.2rem);
+        /* responsive font size between 1.6rem and 2.2rem */
+         }
+      .subtitle {
+        /*cute subtitle */
+        color: var(--muted);
+        margin: -0.4rem 0 1.25rem;
+        line-height: 1.4;
+
+      }
       .card {
-        border: 1px solid #ddd;
-        padding: 1.5rem;
+        background: var(--card);
+        padding: 1.4rem;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
         margin-bottom: 1rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        backdrop-filter: blur(10px);
+      }
+      label{
+        display:block;
+        /*creates the label take full width so itll stack nicely*/
+
+        align-items: center;
+        gap: .4rem;
+        font-weight:800;
+        color: var(--accent);
+        background: rgba(109, 94, 252, .10);
+        /*light purple background behind the pill*/
+        padding: .25rem .6rem;
+        border-radius: 999px;
+        margin-top: .35rem;
+
       }
       .input-group {
         display: flex;
-        gap: 1rem;
+        gap: .9rem;
         align-items: center;
         margin-bottom: 1rem;
+        flex-wrap: wrap;
+
       }
       input[type="range"] {
         flex: 1;
-        min-width: 200px;
+        min-width: 240px;
+        accent-color: var(--accent);
       }
       button {
-        padding: 0.6rem 1.2rem;
-        background: #007bff;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
+        padding: 0.7rem 1.1rem;
+        border-radius: 12px;
+        border: 1px solid rgba(109,94,252,.25);
+        cursor:pointer;
         font-size: 1rem;
+        font-weight: 600;
+        color: white;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        box-shadow: 0 10px 24px rgba(109,94,252,.25);
+           /* Soft glow-ish shadow */
+
+        transition: transform .08s ease, box-shadow .12s ease, filter .12s ease;
       }
-      button:hover { background: #0056b3; }
+      button:hover { 
+        filter: brightness(1.02);
+        box-shadow: 0 14px 28px rgba(109,94,252,.28);
+        
+      }
+      button:active {
+        transform: translateY(1px) scale(.99);
+      }
+      .results-count{
+        color: var(--muted);
+        font-size: .95rem;
+        margin: .85rem 0 0; 
+      }
       .budget-display { font-weight: bold; color: #007bff; }
       .result-item {
         padding: 1rem;
@@ -54,6 +129,7 @@
   </head>
   <body>
     <h1>NYC Apartment Recommender</h1>
+    <p class="subtitle">Pick a budget and I'll suggest neighborhoods in NYU with median rent under it.</p>
     <div class="card">
       <label>Max Budget (per month):<br/>
         <span class="budget-display">$<span id="budgetValue">3000</span></span>
