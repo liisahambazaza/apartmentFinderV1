@@ -5,7 +5,10 @@ RENT_DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "medianAskingRen
 RESTAURANT_DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "DOHMH_New_York_City_Restaurant_Inspection_Results_20260125.csv"
 
 def load_food_data():
-    """Load the restaurant CSV and return as DataFrame."""
+    """Load the restaurant CSV and return as DataFrame. Returns None if file doesn't exist."""
+    if not RESTAURANT_DATA_PATH.exists():
+        print(f"Warning: Restaurant data file not found at {RESTAURANT_DATA_PATH}")
+        return None
     df = pd.read_csv(RESTAURANT_DATA_PATH)
     return df
 
@@ -24,6 +27,9 @@ def load_data():
 def get_restaurant_counts_by_neighborhood():
     """Count A-grade restaurants per borough."""
     restaurants = load_food_data()
+    
+    if restaurants is None:
+        return pd.DataFrame(columns=["Borough", "restaurant_count"])
     
     # Filter for A-grade restaurants only
     a_grade_restaurants = restaurants[restaurants["GRADE"] == "A"]
