@@ -114,22 +114,72 @@
         font-size: .95rem;
         margin: .85rem 0 0; 
       }
-      .budget-display { font-weight: bold; color: #007bff; }
-      .result-item {
-        padding: 1rem;
-        background: #f9f9f9;
-        border-left: 4px solid #007bff;
-        margin-bottom: 0.8rem;
-        border-radius: 4px;
+      #results{
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: .9rem;
+        margin-top: 1rem;
       }
-      .result-item strong { display: block; font-size: 1.1rem; }
-      .result-item .details { color: #666; margin-top: 0.4rem; }
-      .results-count { color: #666; font-size: 0.95rem; }
+      @media (min-width: 760px ){
+  
+        #results{
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .result-item {
+        padding: 1rem 1rem;
+        background: #f9f9f9;
+        border-left: 4px solid var(--border);
+        border-radius: 16px;
+        box-shadow: 0 10px 22px rgba(17, 24, 39, .06);
+        position: relative;
+        overflow: hidden;
+        transform: translateY(0);
+        transition: transform .12s ease, box-shadow .12s ease;
+      }
+      .result-item::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(450px 200px at 10% 0%, rgba(109,94,252,.14), transparent 60%),
+                    radial-gradient(450px 200px at 100% 100%, rgba(34,193,195,.12), transparent 60%);
+        pointer-events:none;
+      }
+      .result-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 30px rgba(17, 24, 39, .1);
+      } 
+      .result-item strong { 
+        display: block;
+        font-size: 1.05rem;
+        letter-spacing:-0.01em;
+        margin-bottom: 0.35rem;
+      
+      }
+      .details { 
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .pill{
+        display:inline-flex;
+        gap: .4rem;
+        align-items:center;
+        font-size:.85rem;
+        padding:.25rem .55rem;
+ 
+
+        border-radius:999px;
+        /* Pill shape */
+        background: rgba(31,41,55,.06);
+        color: rgba(31,41,55,.8);
+        /* Dark-ish text, slightly transparent */
+        margin-right:.4rem;
+        }
     </style>
   </head>
   <body>
     <h1>NYC Apartment Recommender</h1>
-    <p class="subtitle">Pick a budget and I'll suggest neighborhoods in NYU with median rent under it.</p>
+    <p class="subtitle">Pick a budget and I'll suggest neighborhoods in NYC with median rent under it.</p>
     <div class="card">
       <label>Max Budget (per month):<br/>
         <span class="budget-display">$<span id="budgetValue">3000</span></span>
@@ -138,6 +188,12 @@
         <input id="budgetSlider" type="range" min="500" max="6000" value="3000" step="100"/>
         <button id="get">Get Recommendations</button>
       </div>
+      <label style="margin-top: 1rem;">Restaurant Importance:<br/>
+        <span class="budget-display"><span id="restaurantValue">0</span>% (Budget-Focused)</span>
+      </label>
+      <div class="input-group">
+        <input id="restaurantSlider" type="range" min="0" max="100" value="0" step="5"/>
+      </div>
       <p class="results-count" id="resultCount"></p>
     </div>
     <div id="results"></div>
@@ -145,20 +201,40 @@
     <script>
       const slider = document.getElementById('budgetSlider');
       const budgetValue = document.getElementById('budgetValue');
+      const restaurantSlider = document.getElementById('restaurantSlider');
+      const restaurantValue = document.getElementById('restaurantValue');
       const resultCount = document.getElementById('resultCount');
+
+      function updateRestaurantLabel() {
+        const val = Number(restaurantSlider.value);
+        restaurantValue.textContent = val;
+        const label = val === 0 ? "Budget-Focused" : val === 100 ? "Restaurant-Focused" : "Mixed";
+        document.querySelector('.budget-display').innerHTML = `<span id="restaurantValue">${val}</span>% (${label})`;
+      }
 
       slider.addEventListener('input', (e) => {
         budgetValue.textContent = e.target.value;
       });
 
+      restaurantSlider.addEventListener('input', updateRestaurantLabel);
+
       async function getRecs() {
         const maxRent = Number(document.getElementById('budgetSlider').value);
+        const restaurantImportance = Number(document.getElementById('restaurantSlider').value);
+        
         const res = await fetch('/api/recommend', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ max_rent: maxRent, top_n: 10 })
+          method: 'GET',
+          headers: {'Content-Type':'application/json'}
         });
-        const data = await res.json();
+        
+        const params = new URLSearchParams({
+          max_rent: maxRent,
+          top_n: 10,
+          restaurant_importance: restaurantImportance
+        });
+        
+        const fullRes = await fetch('/api/recommend?' + params.toString());
+        const data = await fullRes.json();
         const out = document.getElementById('results');
         out.innerHTML = '';
         
@@ -182,8 +258,9 @@
           el.innerHTML = `
             <strong>#${idx + 1} — ${r.areaName}</strong>
             <div class="details">
-              Borough: ${r.Borough} | Type: ${r.areaType}<br/>
-              Median Rent: <strong>$${rent}/month</strong>
+              ${r.Borough} | ${r.areaType} | Rent: $${Math.round(r.rent).toLocaleString()}/month
+              <br>
+              🍽️ A-Grade Restaurants: ${Math.round(r.restaurant_count) || 0}
             </div>
           `;
           out.appendChild(el);

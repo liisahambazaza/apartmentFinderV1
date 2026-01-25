@@ -22,17 +22,8 @@ async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-@app.post("/api/recommend")
-async def recommend(payload: dict):
-    max_rent = payload.get("max_rent") if isinstance(payload, dict) else None
-    top_n = int(payload.get("top_n", 5)) if isinstance(payload, dict) else 5
-    
-    # Convert max_rent to float if provided
-    if max_rent is not None:
-        try:
-            max_rent = float(max_rent)
-        except (ValueError, TypeError):
-            max_rent = None
-    
-    recs = data_module.get_recommendations(preferences=None, top_n=top_n, max_rent=max_rent)
-    return JSONResponse(content={"recommendations": recs})
+# Adding budget-based recommendations back to the website
+@app.get("/api/recommend")
+async def recommend(max_rent: int = 3000, top_n: int = 5, restaurant_importance: int = 0):
+    recommendations = data_module.get_recommendations(max_rent=max_rent, top_n=top_n, restaurant_importance=restaurant_importance)
+    return {"recommendations": recommendations}
