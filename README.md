@@ -1,11 +1,8 @@
-<<<<<<< HEAD
-# apartmentFinderV1
-=======
-# NYC Apartment Recommender — Starter
+# NYC Apartment Recommender
 
-This is a minimal FastAPI scaffold that demonstrates using NYC area data to produce apartment recommendations based on preselected budget
+This is a minimal FastAPI scaffold that demonstrates using NYC area data to produce apartment recommendations based on preselected budget.
 
-Quick start (macOS):
+## Quick start (macOS)
 
 1. Create a virtual environment and install dependencies:
 
@@ -23,10 +20,9 @@ uvicorn app.main:app --reload --port 8000
 
 3. Open http://localhost:8000 in your browser.
 
-Files of interest:
-- File: app/main.py (FastAPI app)
-- File: app/data.py (data loading + simple recommender)
-- File: data/sample_nyc.csv (small sample dataset)
-- File: templates/index.html (basic frontend)
+## Files of interest
 
->>>>>>> 3958a45 (Initial commit)
+- `app/main.py` — FastAPI app
+- `app/data.py` — data loading + simple recommender
+- `data/medianAskingRent_All.csv` — median rent dataset
+- `templates/index.html` — basic frontend
