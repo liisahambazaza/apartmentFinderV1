@@ -3,7 +3,7 @@ from pathlib import Path
 from functools import lru_cache
 
 RENT_DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "medianAskingRent_All.csv"
-RESTAURANT_DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "cafes_20260125.csv"
+RESTAURANT_DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "restaurant_data.csv"
 
 # NYC ZIP code to neighborhood mapping (covers major neighborhoods in the rent dataset)
 # Source: approximate groupings based on USPS/NYC planning data
@@ -105,7 +105,7 @@ def load_data():
 
 @lru_cache(maxsize=1)
 def get_restaurant_counts_by_neighborhood():
-    """Count A-grade restaurants per neighborhood using ZIP-to-neighborhood mapping.
+    """Count unique A-grade restaurants per neighborhood using ZIP-to-neighborhood mapping.
 
     Falls back to borough-level counts if ZIP mapping doesn't produce matches.
     """
@@ -114,17 +114,26 @@ def get_restaurant_counts_by_neighborhood():
     if restaurants is None:
         return pd.DataFrame(columns=["areaName", "restaurant_count"])
 
+    # Normalize column names to handle both uppercase and lowercase CSVs
+    restaurants.columns = restaurants.columns.str.upper()
+
     # Filter for A-grade restaurants only
-    a_grade = restaurants[restaurants["GRADE"] == "A"].copy()
+    if "GRADE" in restaurants.columns:
+        a_grade = restaurants[restaurants["GRADE"] == "A"].copy()
+    else:
+        a_grade = restaurants.copy()
 
     if a_grade.empty:
         return pd.DataFrame(columns=["areaName", "restaurant_count"])
+
+    # Deduplicate by restaurant ID (CAMIS) to count unique restaurants
+    a_grade = a_grade.drop_duplicates(subset="CAMIS")
 
     # Map ZIP codes to neighborhoods
     a_grade["ZIPCODE"] = pd.to_numeric(a_grade["ZIPCODE"], errors="coerce")
     a_grade["neighborhood"] = a_grade["ZIPCODE"].map(ZIP_TO_NEIGHBORHOOD)
 
-    # Count restaurants per neighborhood (from ZIP mapping)
+    # Count unique restaurants per neighborhood (from ZIP mapping)
     neighborhood_counts = (
         a_grade[a_grade["neighborhood"].notna()]
         .groupby("neighborhood")
@@ -133,14 +142,11 @@ def get_restaurant_counts_by_neighborhood():
     )
     neighborhood_counts.columns = ["areaName", "restaurant_count"]
 
-    # For ZIPs that didn't map to a neighborhood, fall back to borough-level
-    # by distributing the borough count evenly across its neighborhoods
+    # If ZIP mapping produced no results, fall back to borough-level
     if neighborhood_counts.empty:
-        # Full fallback: count by borough
         boro_map = {"Manhattan": "Manhattan", "Bronx": "Bronx",
                     "Brooklyn": "Brooklyn", "Queens": "Queens",
                     "Staten Island": "Staten Island",
-                    # The restaurant CSV uses numeric borough codes sometimes
                     "1": "Manhattan", "2": "Bronx", "3": "Brooklyn",
                     "4": "Queens", "5": "Staten Island"}
         a_grade["Borough"] = a_grade["BORO"].map(boro_map).fillna(a_grade["BORO"])
