@@ -15,10 +15,9 @@
         --accent:#6d5efc;
         --accent2:#22c1c3;
         --shadow: 0 10px 30px rgba(17, 24, 39, .08);
-
       }
       *{
-        box-sizing:border-box; /* makes width/height include padding +border */
+        box-sizing:border-box;
       }
       body {
         font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
@@ -27,28 +26,19 @@
         margin: 0 auto;
         color: var(--text);
         background:
-           radial-gradient(900px 500px at 15% 15%, var(--bg2), transparent 60%),
-            /* 1st background layer: a big soft blue “blob” near top-left */
-
+          radial-gradient(900px 500px at 15% 15%, var(--bg2), transparent 60%),
           radial-gradient(900px 500px at 85% 0%, #fae4ef, transparent 55%),
-            /* 2nd layer: a pinkish soft blob near top-right */
-
           linear-gradient(180deg, var(--bg1), #ffffff);
-            /* 3rd layer: vertical fade from bg1 to white (top → bottom) */
-
       }
       h1 { 
         margin: 0 0 1rem;
         letter-spacing: -0.02em;
         font-size: clamp(1.6rem, 2vw + 1rem, 2.2rem);
-        /* responsive font size between 1.6rem and 2.2rem */
-         }
+      }
       .subtitle {
-        /*cute subtitle */
         color: var(--muted);
         margin: -0.4rem 0 1.25rem;
         line-height: 1.4;
-
       }
       .card {
         background: var(--card);
@@ -61,18 +51,14 @@
       }
       label{
         display:block;
-        /*creates the label take full width so itll stack nicely*/
-
         align-items: center;
         gap: .4rem;
         font-weight:800;
         color: var(--accent);
         background: rgba(109, 94, 252, .10);
-        /*light purple background behind the pill*/
         padding: .25rem .6rem;
         border-radius: 999px;
         margin-top: .35rem;
-
       }
       .input-group {
         display: flex;
@@ -80,7 +66,6 @@
         align-items: center;
         margin-bottom: 1rem;
         flex-wrap: wrap;
-
       }
       input[type="range"] {
         flex: 1;
@@ -97,14 +82,11 @@
         color: white;
         background: linear-gradient(135deg, var(--accent), var(--accent2));
         box-shadow: 0 10px 24px rgba(109,94,252,.25);
-           /* Soft glow-ish shadow */
-
         transition: transform .08s ease, box-shadow .12s ease, filter .12s ease;
       }
       button:hover { 
         filter: brightness(1.02);
         box-shadow: 0 14px 28px rgba(109,94,252,.28);
-        
       }
       button:active {
         transform: translateY(1px) scale(.99);
@@ -114,14 +96,51 @@
         font-size: .95rem;
         margin: .85rem 0 0; 
       }
+
+      /* Progress bar */
+      .progress-bar {
+        width: 100%;
+        height: 4px;
+        background: rgba(109, 94, 252, .12);
+        border-radius: 4px;
+        margin-top: 1rem;
+        overflow: hidden;
+        opacity: 0;
+        transition: opacity .2s ease;
+      }
+      .progress-bar.active {
+        opacity: 1;
+      }
+      .progress-bar .bar {
+        height: 100%;
+        width: 30%;
+        background: linear-gradient(90deg, var(--accent), var(--accent2));
+        border-radius: 4px;
+        animation: progress-slide 1s ease-in-out infinite;
+      }
+      @keyframes progress-slide {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(400%); }
+      }
+
+      /* Error message */
+      .error-msg {
+        color: #dc2626;
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 12px;
+        padding: .75rem 1rem;
+        margin-top: 1rem;
+        display: none;
+      }
+
       #results{
         display: grid;
         grid-template-columns: 1fr;
         gap: .9rem;
         margin-top: 1rem;
       }
-      @media (min-width: 760px ){
-  
+      @media (min-width: 760px){
         #results{
           grid-template-columns: 1fr 1fr;
         }
@@ -135,7 +154,7 @@
         position: relative;
         overflow: hidden;
         transform: translateY(0);
-        transition: transform .12s ease, box-shadow .12s ease;
+        transition: transform .12s ease, box-shadow .12s ease, opacity .3s ease;
       }
       .result-item::before {
         content: "";
@@ -154,7 +173,6 @@
         font-size: 1.05rem;
         letter-spacing:-0.01em;
         margin-bottom: 0.35rem;
-      
       }
       .details { 
         color: var(--muted);
@@ -166,15 +184,20 @@
         align-items:center;
         font-size:.85rem;
         padding:.25rem .55rem;
- 
-
         border-radius:999px;
-        /* Pill shape */
         background: rgba(31,41,55,.06);
         color: rgba(31,41,55,.8);
-        /* Dark-ish text, slightly transparent */
         margin-right:.4rem;
-        }
+      }
+
+      /* Fade-in animation for results */
+      .result-item.fade-in {
+        animation: fadeIn .3s ease forwards;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
     </style>
   </head>
   <body>
@@ -186,89 +209,118 @@
       </label>
       <div class="input-group">
         <input id="budgetSlider" type="range" min="500" max="6000" value="3000" step="100"/>
-        <button id="get">Get Recommendations</button>
       </div>
       <label style="margin-top: 1rem;">Restaurant Importance:<br/>
-        <span class="budget-display"><span id="restaurantValue">0</span>% (Budget-Focused)</span>
+        <span id="restaurantLabel"><span id="restaurantValue">0</span>% (Budget-Focused)</span>
       </label>
       <div class="input-group">
         <input id="restaurantSlider" type="range" min="0" max="100" value="0" step="5"/>
       </div>
+      <div class="progress-bar" id="progressBar"><div class="bar"></div></div>
+      <div class="error-msg" id="errorMsg"></div>
       <p class="results-count" id="resultCount"></p>
     </div>
     <div id="results"></div>
 
     <script>
-      const slider = document.getElementById('budgetSlider');
+      const budgetSlider = document.getElementById('budgetSlider');
       const budgetValue = document.getElementById('budgetValue');
       const restaurantSlider = document.getElementById('restaurantSlider');
       const restaurantValue = document.getElementById('restaurantValue');
+      const restaurantLabel = document.getElementById('restaurantLabel');
       const resultCount = document.getElementById('resultCount');
+      const progressBar = document.getElementById('progressBar');
+      const errorMsg = document.getElementById('errorMsg');
+
+      let debounceTimer = null;
+
+      function updateBudgetLabel() {
+        budgetValue.textContent = budgetSlider.value;
+      }
 
       function updateRestaurantLabel() {
         const val = Number(restaurantSlider.value);
-        restaurantValue.textContent = val;
         const label = val === 0 ? "Budget-Focused" : val === 100 ? "Restaurant-Focused" : "Mixed";
-        document.querySelector('.budget-display').innerHTML = `<span id="restaurantValue">${val}</span>% (${label})`;
+        restaurantLabel.innerHTML = `<span id="restaurantValue">${val}</span>% (${label})`;
       }
 
-      slider.addEventListener('input', (e) => {
-        budgetValue.textContent = e.target.value;
+      function debouncedFetch() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(getRecs, 300);
+      }
+
+      budgetSlider.addEventListener('input', () => {
+        updateBudgetLabel();
+        debouncedFetch();
       });
 
-      restaurantSlider.addEventListener('input', updateRestaurantLabel);
+      restaurantSlider.addEventListener('input', () => {
+        updateRestaurantLabel();
+        debouncedFetch();
+      });
 
       async function getRecs() {
-        const maxRent = Number(document.getElementById('budgetSlider').value);
-        const restaurantImportance = Number(document.getElementById('restaurantSlider').value);
-        
-        const res = await fetch('/api/recommend', {
-          method: 'GET',
-          headers: {'Content-Type':'application/json'}
-        });
-        
-        const params = new URLSearchParams({
-          max_rent: maxRent,
-          top_n: 10,
-          restaurant_importance: restaurantImportance
-        });
-        
-        const fullRes = await fetch('/api/recommend?' + params.toString());
-        const data = await fullRes.json();
-        const out = document.getElementById('results');
-        out.innerHTML = '';
-        
-        const recs = data.recommendations || [];
-        resultCount.textContent = recs.length > 0
-          ? `Found ${recs.length} neighborhood${recs.length !== 1 ? 's' : ''} within budget`
-          : 'No neighborhoods found within budget';
+        const maxRent = Number(budgetSlider.value);
+        const restaurantImportance = Number(restaurantSlider.value);
 
-        if (recs.length === 0) {
-          const el = document.createElement('div');
-          el.className = 'card';
-          el.innerHTML = '<p style="color: #999;">Try increasing your budget or adjusting filters.</p>';
-          out.appendChild(el);
-          return;
+        // Show progress bar
+        progressBar.classList.add('active');
+        errorMsg.style.display = 'none';
+
+        try {
+          const params = new URLSearchParams({
+            max_rent: maxRent,
+            top_n: 10,
+            restaurant_importance: restaurantImportance
+          });
+
+          const res = await fetch('/api/recommend?' + params.toString());
+
+          if (!res.ok) {
+            throw new Error(`Server error (${res.status})`);
+          }
+
+          const data = await res.json();
+          const out = document.getElementById('results');
+          out.innerHTML = '';
+
+          const recs = data.recommendations || [];
+          resultCount.textContent = recs.length > 0
+            ? `Found ${recs.length} neighborhood${recs.length !== 1 ? 's' : ''} within budget`
+            : 'No neighborhoods found within budget';
+
+          if (recs.length === 0) {
+            const el = document.createElement('div');
+            el.className = 'card';
+            el.innerHTML = '<p style="color: #999;">Try increasing your budget or adjusting filters.</p>';
+            out.appendChild(el);
+            return;
+          }
+
+          recs.forEach((r, idx) => {
+            const el = document.createElement('div');
+            el.className = 'result-item fade-in';
+            el.style.animationDelay = `${idx * 0.05}s`;
+            el.innerHTML = `
+              <strong>#${idx + 1} — ${r.areaName}</strong>
+              <div class="details">
+                <span class="pill">${r.Borough}</span>
+                <span class="pill">${r.areaType}</span>
+                <span class="pill">$${Math.round(r.rent).toLocaleString()}/mo</span>
+                <span class="pill">🍽️ ${Math.round(r.restaurant_count) || 0} A-grade</span>
+              </div>
+            `;
+            out.appendChild(el);
+          });
+        } catch (err) {
+          errorMsg.textContent = `Failed to load recommendations: ${err.message}`;
+          errorMsg.style.display = 'block';
+        } finally {
+          progressBar.classList.remove('active');
         }
-
-        recs.forEach((r, idx) => {
-          const el = document.createElement('div');
-          el.className = 'result-item';
-          const rent = parseFloat(r.rent).toFixed(0);
-          el.innerHTML = `
-            <strong>#${idx + 1} — ${r.areaName}</strong>
-            <div class="details">
-              ${r.Borough} | ${r.areaType} | Rent: $${Math.round(r.rent).toLocaleString()}/month
-              <br>
-              🍽️ A-Grade Restaurants: ${Math.round(r.restaurant_count) || 0}
-            </div>
-          `;
-          out.appendChild(el);
-        });
       }
 
-      document.getElementById('get').addEventListener('click', getRecs);
-      // Auto-fetch on page load
+      // Fetch on page load
       getRecs();
     </script>
   </body>
