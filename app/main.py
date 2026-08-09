@@ -24,6 +24,6 @@ async def index(request: Request):
 
 # Adding budget-based recommendations back to the website
 @app.get("/api/recommend")
-async def recommend(max_rent: int = 3000, top_n: int = 5, restaurant_importance: int = 0):
-    recommendations = data_module.get_recommendations(max_rent=max_rent, top_n=top_n, restaurant_importance=restaurant_importance)
+async def recommend(min_rent: int = 0, max_rent: int = 3000, top_n: int = 5, restaurant_importance: int = 0):
+    recommendations = data_module.get_recommendations(min_rent=min_rent, max_rent=max_rent, top_n=top_n, restaurant_importance=restaurant_importance)
     return {"recommendations": recommendations}

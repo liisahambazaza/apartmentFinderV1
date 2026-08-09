@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>NYC Apartment Recommender</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
       :root{
         --bg1:#9090d8;
@@ -134,6 +135,17 @@
         display: none;
       }
 
+      /* Map */
+      #map {
+        width: 100%;
+        height: 420px;
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        margin-bottom: 1rem;
+        border: 1px solid var(--border);
+        z-index: 0;
+      }
+
       #results{
         display: grid;
         grid-template-columns: 1fr;
@@ -154,7 +166,8 @@
         position: relative;
         overflow: hidden;
         transform: translateY(0);
-        transition: transform .12s ease, box-shadow .12s ease, opacity .3s ease;
+        transition: transform .12s ease, box-shadow .12s ease, opacity .3s ease, border-left-color .2s ease;
+        cursor: pointer;
       }
       .result-item::before {
         content: "";
@@ -204,11 +217,14 @@
     <h1>NYC Apartment Recommender</h1>
     <p class="subtitle">Pick a budget and I'll suggest neighborhoods in NYC with median rent under it.</p>
     <div class="card">
-      <label>Max Budget (per month):<br/>
-        <span class="budget-display">$<span id="budgetValue">3000</span></span>
+      <label>Budget Range (per month):<br/>
+        <span class="budget-display">$<span id="minBudgetValue">500</span> — $<span id="maxBudgetValue">3000</span></span>
       </label>
-      <div class="input-group">
-        <input id="budgetSlider" type="range" min="500" max="6000" value="3000" step="100"/>
+      <div class="input-group" style="gap: .4rem;">
+        <span style="font-size:.85rem;color:var(--muted);">Min</span>
+        <input id="minBudgetSlider" type="range" min="500" max="6000" value="500" step="100"/>
+        <span style="font-size:.85rem;color:var(--muted);">Max</span>
+        <input id="maxBudgetSlider" type="range" min="500" max="6000" value="3000" step="100"/>
       </div>
       <label style="margin-top: 1rem;">Restaurant Importance:<br/>
         <span id="restaurantLabel"><span id="restaurantValue">0</span>% (Budget-Focused)</span>
@@ -220,13 +236,162 @@
       <div class="error-msg" id="errorMsg"></div>
       <p class="results-count" id="resultCount"></p>
     </div>
+    <div id="map"></div>
     <div id="results"></div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-      const budgetSlider = document.getElementById('budgetSlider');
-      const budgetValue = document.getElementById('budgetValue');
+      // Borough colors
+      const BOROUGH_COLORS = {
+        'manhattan': '#6d5efc',
+        'brooklyn': '#22c1c3',
+        'queens': '#f59e0b',
+        'bronx': '#ef4444',
+        'staten-island': '#10b981'
+      };
+
+      // NYC bounding box (restrict map to five boroughs)
+      const nycBounds = L.latLngBounds(
+        [40.4774, -74.2591],  // SW corner
+        [40.9176, -73.7004]   // NE corner
+      );
+
+      // Initialize map
+      const map = L.map('map', {
+        center: [40.7128, -73.9500],
+        zoom: 11,
+        maxBounds: nycBounds.pad(0.1),
+        maxBoundsViscosity: 1.0,
+        minZoom: 10,
+        maxZoom: 16
+      });
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        maxZoom: 18
+      }).addTo(map);
+
+      // State
+      let neighborhoodLayer = null;
+      let geojsonData = null;
+      let currentRecs = [];
+      let highlightedLayer = null;
+
+      // Load GeoJSON
+      fetch('/static/nyc-neighborhoods.geojson')
+        .then(r => r.json())
+        .then(data => {
+          geojsonData = data;
+          renderNeighborhoods();
+          getRecs(); // initial fetch after geo is ready
+        })
+        .catch(() => {
+          // If GeoJSON fails to load, still fetch recommendations
+          getRecs();
+        });
+
+      function normalizeNameForMatch(name) {
+        return name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      }
+
+      function isRecommended(featureName) {
+        const normalized = normalizeNameForMatch(featureName);
+        return currentRecs.findIndex(r => normalizeNameForMatch(r.areaName) === normalized);
+      }
+
+      function getStyle(feature) {
+        const borough = feature.properties.borough;
+        const baseColor = BOROUGH_COLORS[borough] || '#999';
+        const recIdx = isRecommended(feature.properties.name);
+
+        if (recIdx >= 0) {
+          return {
+            fillColor: baseColor,
+            fillOpacity: 0.55,
+            weight: 2.5,
+            color: baseColor,
+            opacity: 1
+          };
+        }
+        return {
+          fillColor: baseColor,
+          fillOpacity: 0.1,
+          weight: 0.8,
+          color: '#aaa',
+          opacity: 0.5
+        };
+      }
+
+      function highlightFeature(e) {
+        const layer = e.target;
+        layer.setStyle({
+          fillOpacity: 0.6,
+          weight: 3,
+          color: '#333',
+          opacity: 1
+        });
+        layer.bringToFront();
+        highlightedLayer = layer;
+      }
+
+      function resetHighlight(e) {
+        if (neighborhoodLayer) {
+          neighborhoodLayer.resetStyle(e.target);
+        }
+        highlightedLayer = null;
+      }
+
+      function onFeatureClick(e) {
+        const name = e.target.feature.properties.name;
+        const recIdx = isRecommended(name);
+        if (recIdx >= 0) {
+          map.fitBounds(e.target.getBounds(), { padding: [40, 40] });
+        }
+      }
+
+      function renderNeighborhoods() {
+        if (!geojsonData) return;
+
+        if (neighborhoodLayer) {
+          map.removeLayer(neighborhoodLayer);
+        }
+
+        neighborhoodLayer = L.geoJSON(geojsonData, {
+          style: getStyle,
+          onEachFeature: (feature, layer) => {
+            const name = feature.properties.name;
+            const borough = feature.properties.borough;
+            const boroughLabel = borough.charAt(0).toUpperCase() + borough.slice(1).replace('-', ' ');
+            const recIdx = isRecommended(name);
+
+            let tooltipContent = `<strong>${name}</strong><br>${boroughLabel}`;
+            if (recIdx >= 0) {
+              const rec = currentRecs[recIdx];
+              tooltipContent += `<br>$${Math.round(rec.rent).toLocaleString()}/mo`;
+              tooltipContent += `<br>🍽️ ${Math.round(rec.restaurant_count) || 0} A-grade`;
+              tooltipContent += `<br><em>#${recIdx + 1} recommendation</em>`;
+            }
+
+            layer.bindTooltip(tooltipContent, {
+              sticky: true,
+              className: 'neighborhood-tooltip'
+            });
+
+            layer.on({
+              mouseover: highlightFeature,
+              mouseout: resetHighlight,
+              click: onFeatureClick
+            });
+          }
+        }).addTo(map);
+      }
+
+      // UI elements
+      const minBudgetSlider = document.getElementById('minBudgetSlider');
+      const maxBudgetSlider = document.getElementById('maxBudgetSlider');
+      const minBudgetValue = document.getElementById('minBudgetValue');
+      const maxBudgetValue = document.getElementById('maxBudgetValue');
       const restaurantSlider = document.getElementById('restaurantSlider');
-      const restaurantValue = document.getElementById('restaurantValue');
       const restaurantLabel = document.getElementById('restaurantLabel');
       const resultCount = document.getElementById('resultCount');
       const progressBar = document.getElementById('progressBar');
@@ -234,8 +399,16 @@
 
       let debounceTimer = null;
 
-      function updateBudgetLabel() {
-        budgetValue.textContent = budgetSlider.value;
+      function updateBudgetLabels() {
+        let minVal = Number(minBudgetSlider.value);
+        let maxVal = Number(maxBudgetSlider.value);
+        // Ensure min doesn't exceed max
+        if (minVal > maxVal) {
+          minBudgetSlider.value = maxVal;
+          minVal = maxVal;
+        }
+        minBudgetValue.textContent = minVal;
+        maxBudgetValue.textContent = maxVal;
       }
 
       function updateRestaurantLabel() {
@@ -249,8 +422,13 @@
         debounceTimer = setTimeout(getRecs, 300);
       }
 
-      budgetSlider.addEventListener('input', () => {
-        updateBudgetLabel();
+      minBudgetSlider.addEventListener('input', () => {
+        updateBudgetLabels();
+        debouncedFetch();
+      });
+
+      maxBudgetSlider.addEventListener('input', () => {
+        updateBudgetLabels();
         debouncedFetch();
       });
 
@@ -260,31 +438,34 @@
       });
 
       async function getRecs() {
-        const maxRent = Number(budgetSlider.value);
+        const minRent = Number(minBudgetSlider.value);
+        const maxRent = Number(maxBudgetSlider.value);
         const restaurantImportance = Number(restaurantSlider.value);
 
-        // Show progress bar
         progressBar.classList.add('active');
         errorMsg.style.display = 'none';
 
         try {
           const params = new URLSearchParams({
+            min_rent: minRent,
             max_rent: maxRent,
             top_n: 10,
             restaurant_importance: restaurantImportance
           });
 
           const res = await fetch('/api/recommend?' + params.toString());
-
-          if (!res.ok) {
-            throw new Error(`Server error (${res.status})`);
-          }
+          if (!res.ok) throw new Error(`Server error (${res.status})`);
 
           const data = await res.json();
+          const recs = data.recommendations || [];
+          currentRecs = recs;
+
+          // Re-render map with new recommendations highlighted
+          renderNeighborhoods();
+
+          // Update result count
           const out = document.getElementById('results');
           out.innerHTML = '';
-
-          const recs = data.recommendations || [];
           resultCount.textContent = recs.length > 0
             ? `Found ${recs.length} neighborhood${recs.length !== 1 ? 's' : ''} within budget`
             : 'No neighborhoods found within budget';
@@ -301,15 +482,34 @@
             const el = document.createElement('div');
             el.className = 'result-item fade-in';
             el.style.animationDelay = `${idx * 0.05}s`;
+
+            // Color the left border by borough
+            const boroughKey = r.Borough.toLowerCase().replace(' ', '-');
+            const borderColor = BOROUGH_COLORS[boroughKey] || '#ccc';
+            el.style.borderLeftColor = borderColor;
+
             el.innerHTML = `
               <strong>#${idx + 1} — ${r.areaName}</strong>
               <div class="details">
-                <span class="pill">${r.Borough}</span>
+                <span class="pill" style="background:${borderColor}20; color:${borderColor}">${r.Borough}</span>
                 <span class="pill">${r.areaType}</span>
                 <span class="pill">$${Math.round(r.rent).toLocaleString()}/mo</span>
                 <span class="pill">🍽️ ${Math.round(r.restaurant_count) || 0} A-grade</span>
               </div>
             `;
+
+            // Click result to zoom to neighborhood on map
+            el.addEventListener('click', () => {
+              if (!neighborhoodLayer) return;
+              const normalized = normalizeNameForMatch(r.areaName);
+              neighborhoodLayer.eachLayer(layer => {
+                if (normalizeNameForMatch(layer.feature.properties.name) === normalized) {
+                  map.fitBounds(layer.getBounds(), { padding: [40, 40], maxZoom: 14 });
+                  layer.openTooltip();
+                }
+              });
+            });
+
             out.appendChild(el);
           });
         } catch (err) {
@@ -319,9 +519,6 @@
           progressBar.classList.remove('active');
         }
       }
-
-      // Fetch on page load
-      getRecs();
     </script>
   </body>
 </html>

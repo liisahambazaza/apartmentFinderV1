@@ -1,3 +1,5 @@
 __pycache__/
 *.pyc
+.venv/
+.pytest_cache/
 data/DOHMH_New_York_City_Restaurant_Inspection_Results_*.csv
